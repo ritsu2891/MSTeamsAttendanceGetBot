@@ -3,3 +3,4 @@ data/prefs.js
 node_modules
 rootkey.json
 .env
+*.zip

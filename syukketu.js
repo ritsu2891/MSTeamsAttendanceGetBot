@@ -38,7 +38,7 @@ async function updateJoinInfoTask(target) {
   console.log("1 - GetJoinMembers");
   let joinMembers = {};
   let getJoinMemberChallenge = 0;
-  while (getJoinMemberChallenge < 1) {
+  while (getJoinMemberChallenge < 2) {
     try {
       joinMembers = await getJoinMember();
       break;
@@ -49,8 +49,10 @@ async function updateJoinInfoTask(target) {
       getJoinMemberChallenge++;
     }
   }
+  
+  await _browser.close();
 
-  if (getJoinMemberChallenge >= 5) {
+  if (getJoinMemberChallenge >= 2) {
     console.log("1 Failed");
     return false;
   }
@@ -65,7 +67,13 @@ async function updateJoinInfoTask(target) {
   });
 
   console.log("2 - Post join info to Slack");
-  await postJoinInfo(joinInfo);
+  try {
+    await postJoinInfo(joinInfo);
+  } catch (e) {
+    console.log(e);
+    console.log('2 Failed');
+    return false;
+  }
 
   // 出欠ファイルDL
   // console.log("3 - Donwload join info excel file");
@@ -144,25 +152,30 @@ async function init() {
   const args = chromium.args;
   args.push("--use-fake-ui-for-media-stream");
   args.push("--disable-infobars");
-  // _browser = await chromium.puppeteer.launch({
-  //   args: args,
-  //   defaultViewport: {
-  //     width: 1920,
-  //     height: 1080,
-  //   },
-  //   executablePath: await chromium.executablePath,
-  //   headless: chromium.headless,
-  // });
-  _browser = await puppeteer.launch({
-    slowMo: 50,
-    headless: false,
-    defaultViewport: {
-      width: 1920,
-      height: 1080,
-    },
-    args: args,
-    executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  });
+
+  if (process.env.ENV == "develop") {
+    _browser = await puppeteer.launch({
+      slowMo: 50,
+      headless: false,
+      defaultViewport: {
+        width: 1920,
+        height: 1080,
+      },
+      args: args,
+      executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    });
+  } else {
+    _browser = await chromium.puppeteer.launch({
+      args: args,
+      defaultViewport: {
+        width: 1920,
+        height: 1080,
+      },
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
+    });
+  }
+  
   _page = await _browser.newPage();
   await _page._client.send("Page.setDownloadBehavior", {
     behavior: "allow",
@@ -275,8 +288,7 @@ async function getJoinMember(page = _page) {
         sectionLabel &&
         (await sectionLabel.evaluate(async function (node) {
           return node.innerText;
-        // })) == "Currently in this meeting"
-        })) == "現在この会議に参加中"
+        })) == (process.env.ENV == "develop" ? "現在この会議に参加中" : "Currently in this meeting")
       ) {
         names = await rosterSection.$$("li.item .ts-user-name");
       }
