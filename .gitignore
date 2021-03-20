@@ -1,0 +1,5 @@
+data/prefs.js
+.fonts
+node_modules
+rootkey.json
+.env
