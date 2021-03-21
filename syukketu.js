@@ -49,8 +49,6 @@ async function updateJoinInfoTask(target) {
       getJoinMemberChallenge++;
     }
   }
-  
-  await _browser.close();
 
   if (getJoinMemberChallenge >= 2) {
     console.log("1 Failed");
@@ -245,9 +243,11 @@ async function getJoinMember(page = _page) {
   //通話を示すボックス
   console.log("getJoinMember:4 Find Call");
   await page.waitForTimeout(10000);
+  await page.waitForSelector(".ts-calling-thread-header");
   const meetingBox = await page.$(".ts-calling-thread-header");
 
   console.log("getJoinMember:5 Join Call On Channel Page");
+  await page.waitForSelector(".call-jump-in");
   const callInBtn = await meetingBox.$(".call-jump-in");
   await page.waitForTimeout(5000);
   callInBtn.click();
