@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "ENV=develop node test.js",
-    "pack": "zip -r syukketu.zip ."
+    "deploy": "zip -r syukketu.zip . && aws s3 cp ./syukketu.zip s3://rpaka-codes/syukketu.zip && aws lambda update-function-code --function-name syukketu --s3-bucket rpaka-codes --s3-key syukketu.zip"
   },
   "author": "",
   "license": "ISC",
