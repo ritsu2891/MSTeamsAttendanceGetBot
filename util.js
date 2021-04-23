@@ -99,4 +99,22 @@ function cleanUp(targetPath) {
   }
 }
 
-module.exports = { waitDownloadComplete, searchFiles, unarchive, cleanUp };
+async function saveScreenShot(page = _page) {
+  // S3に保存
+  const jpgBuf = await page.screenshot({ fullPage: true, type: "jpeg" });
+  const s3 = new AWS.S3();
+  const now = new Date();
+  now.setHours(now.getHours() + 9);
+  const nowStr = "" + now.getFullYear() + "-" + (now.getMonth() + 1 + "").padStart(2, "0") + "-" + (now.getDate() + "").padStart(2, "0") + " " + (now.getHours() + "").padStart(2, "0") + ":" + (now.getMinutes() + "").padStart(2, "0") + ":" + (now.getSeconds() + "").padStart(2, "0");
+  const fileName = nowStr.replace(/[\-:]/g, "_").replace(/\s/g, "__");
+  let s3Param = {
+    Bucket: "rpaka-screenshots",
+    Key: null,
+    Body: null,
+  };
+  s3Param.Key = fileName + ".jpg";
+  s3Param.Body = jpgBuf;
+  await s3.putObject(s3Param).promise();
+}
+
+module.exports = { waitDownloadComplete, searchFiles, unarchive, cleanUp, saveScreenShot };

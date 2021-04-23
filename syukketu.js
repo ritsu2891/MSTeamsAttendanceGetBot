@@ -1,14 +1,11 @@
 const chromium = require("chrome-aws-lambda");
-const { waitDownloadComplete, searchFiles } = require("./util.js");
-const { updateJoinInfo } = require("./excelFiileAdapter.js");
-require("dotenv").config();
-const { WebClient } = require("@slack/web-api");
-const web = new WebClient(process.env.SLACK_TOKEN);
+const dotenv = require("dotenv");
 const AWS = require("aws-sdk");
-AWS.config.loadFromPath("./rootkey.json");
-AWS.config.update({ region: "us-east-1" });
 const puppeteer = require("puppeteer-core");
 
+dotenv.config();
+AWS.config.loadFromPath("./rootkey.json");
+AWS.config.update({ region: "us-east-1" });
 var docClient = new AWS.DynamoDB.DocumentClient();
 
 let _page = null;
@@ -17,9 +14,6 @@ let _browser = null;
 const members = require('./data/members');
 const PREFS = require('./data/prefs');
 let pref = {};
-
-let targetChannelName;
-_channelId = null;
 
 // main
 async function updateJoinInfoTask(target) {
@@ -87,63 +81,6 @@ async function updateJoinInfoTask(target) {
 
   await _browser.close();
   // await postSuccessNotice();
-}
-
-async function postPreNotice(target) {
-  pref = PREFS[target];
-  targetChannelName = pref.SLACK_CHANNEL_NAME;
-  // console.log(pref);
-
-  const skipInfo = await getSkipInfo();
-
-  let devMsg = "";
-  if (process.env.ENV == "develop") {
-    devMsg = "*開発の途中のため、関係の無いメッセージが表示されていますが気にしないで下さい。*\n";
-  }
-
-  let message = "";
-  if (!skipInfo.skip) {
-    message = `${devMsg}:rotating-light-red:【予告】2分後に${pref.LABEL}の出欠確認をします。Teams会議にまだ参加していない人は至急参加して下さい。\nこの機能は試験運用中です。不具合の出る可能性がありますが、大目に見て下さいね。`;
-  } else {
-    message = `${devMsg}:information_source:【お知らせ】本日の${pref.LABEL}は${skipInfo.reason}のためお休みです。出欠取得を省略します。`;
-    if (skipInfo.addmsg) {
-      message = `${message}\n${skipInfo.addmsg}`;
-    }
-  }
-
-  await web.chat.postMessage({
-    channel: await findChannel(),
-    text: message,
-  });
-}
-
-async function postJoinInfo(joinInfo) {
-  const members = Object.keys(joinInfo);
-  const joinMembers = members.filter((member) => joinInfo[member]);
-  const notJoinMembers = members.filter((member) => !joinInfo[member]);
-  let devMsg = "";
-  if (process.env.ENV == "develop") {
-    devMsg = "*開発の途中のため、関係の無いメッセージが表示されていますが気にしないで下さい。*\n";
-  }
-  await web.chat.postMessage({
-    channel: await findChannel(),
-    text: `${devMsg}*${pref.LABEL}出欠*\n*出席* : ${joinMembers.length > 0 ? joinMembers.join(", ") : "なし"}\n*欠席* : ${notJoinMembers.length > 0 ? notJoinMembers.join(", ") : "なし"}`,
-  });
-}
-
-async function postSuccessNotice() {
-  await web.chat.postMessage({
-    channel: await findChannel(),
-    text: ":pencil2: 出欠のExcelファイルに記録しました。",
-  });
-}
-
-async function findChannel() {
-  let channels = (await web.conversations.list()).channels;
-  channels = channels.filter((channel) => channel.name == targetChannelName);
-  if (channels.length > 0) {
-    return channels[0].id;
-  }
 }
 
 async function init() {
@@ -305,62 +242,6 @@ async function getJoinMember(page = _page) {
   return nameLabels;
 }
 
-async function downloadFromOneDrive(page = _page) {
-  await page.goto(pref.ONEDRIVE_FILE_URL);
-
-  await microsoftLogin(page, true);
-
-  await page.waitForTimeout(1500);
-  await waitDownloadComplete("/tmp");
-  const files = await searchFiles("/tmp", "xlsx");
-  if (files.length > 0) {
-    return files[0];
-  } else {
-    return null;
-  }
-}
-
-async function uploadToOneDrive(page = _page, filename) {
-  await Promise.all([
-    page.waitForNavigation({
-      waitUntil: "networkidle2",
-    }),
-    page.goto(pref.ONEDRIVE_FOLDER_URL),
-  ]);
-
-  await microsoftLogin(page);
-
-  // const uploadBtn = await page.$('button[name="Upload"]');
-  const uploadBtn = await page.$('button[name="アップロード"]');
-  await uploadBtn.click();
-
-  const uploadTargetBtns = await page.$$(".ms-ContextualMenu-linkContent");
-
-  for (let i = 0; i < uploadTargetBtns.length; i++) {
-    const btn = uploadTargetBtns[i];
-    const text = await btn.$eval(".ms-ContextualMenu-itemText", (node) => node.innerText);
-    if (text == "ファイル") {
-    // if (text == "Files") {
-      const [fileChooser] = await Promise.all([page.waitForFileChooser(), btn.click()]);
-      await fileChooser.accept([filename]);
-
-      await page.waitForSelector(".OperationMonitor");
-      const overrideBtn = await page.$(".OperationMonitor-itemButtonAction");
-      // console.log(overrideBtn);
-      if (overrideBtn) {
-        await overrideBtn.click();
-      }
-
-      while (true) {
-        await page.waitForTimeout(3000);
-        if (!(await page.$('i[data-icon-name="CheckMark"].ms-Icon"'))) {
-          continue;
-        }
-      }
-    }
-  }
-}
-
 async function getSkipInfo() {
   const skipData = await getData();
   if (skipData && skipData.target == pref.CLASS_IDENTIFIER) {
@@ -396,22 +277,4 @@ function getData() {
   });
 }
 
-async function saveScreenShot(page = _page) {
-  // S3に保存
-  const jpgBuf = await page.screenshot({ fullPage: true, type: "jpeg" });
-  const s3 = new AWS.S3();
-  const now = new Date();
-  now.setHours(now.getHours() + 9);
-  const nowStr = "" + now.getFullYear() + "-" + (now.getMonth() + 1 + "").padStart(2, "0") + "-" + (now.getDate() + "").padStart(2, "0") + " " + (now.getHours() + "").padStart(2, "0") + ":" + (now.getMinutes() + "").padStart(2, "0") + ":" + (now.getSeconds() + "").padStart(2, "0");
-  const fileName = nowStr.replace(/[\-:]/g, "_").replace(/\s/g, "__");
-  let s3Param = {
-    Bucket: "rpaka-screenshots",
-    Key: null,
-    Body: null,
-  };
-  s3Param.Key = fileName + ".jpg";
-  s3Param.Body = jpgBuf;
-  await s3.putObject(s3Param).promise();
-}
-
-module.exports = { updateJoinInfoTask, postPreNotice };
+module.exports = { updateJoinInfoTask };
