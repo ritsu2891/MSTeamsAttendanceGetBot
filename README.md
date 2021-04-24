@@ -6,6 +6,9 @@
   <h1>MSTeams出欠自動取得bot</h1>
   <img src="https://cdn.rpaka.dev/logo/nodejs.svg" height="80px" style="margin-right: 15px;" />
   <img src="https://cdn.rpaka.dev/logo/puppeteer.svg" height="80px" />
+  <br />
+  <img src="https://cdn.rpaka.dev/logo/aws-lambda.svg" height="80px" style="margin-right: 15px;" />
+  <img src="https://cdn.rpaka.dev/logo/aws-eventbridge.svg" height="80px" />
 </div><br />
 
 ![動作イメージ](https://cdn.rpaka.dev/useimage/mst-attget/slack.png)
