@@ -4,7 +4,7 @@
   <img src="https://cdn.rpaka.dev/icon/mst-attget.png" height="80px" />
   <h1>MSTeamsAttendanceGetBot</h1>
   <h1>MSTeams出欠自動取得bot</h1>
-  <img src="https://cdn.rpaka.dev/logo/node.svg" height="80px" style="margin-right: 15px;" />
+  <img src="https://cdn.rpaka.dev/logo/nodejs.svg" height="80px" style="margin-right: 15px;" />
   <img src="https://cdn.rpaka.dev/logo/puppeteer.svg" height="80px" />
 </div><br />
 
@@ -26,7 +26,7 @@ MSTeamsの特定のチャンネルで行われている会議の参加者を取�
 
 ## 構成
 
-![](https://cdn.rpaka.dev/arch/mst-attget.png)
+![](https://cdn.rpaka.dev/arch/mst-attget.jpg)
 
 ## 機能
 - MSTeamsブラウザクライアントによる出席者取得（APIアクセス不要）
